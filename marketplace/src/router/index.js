@@ -6,7 +6,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import Home from "../views/home.vue";
 import AllItems from "../views/AllItems.vue";
 import ProductDetail from "../views/ProductDetail.vue";
-import Login from "../views/login.vue";
+import Login from "../views/Login.vue";
 import Register from "../views/Register.vue";
 import Cart from "../views/Cart.vue";
 import Wishlist from "../views/Wishlist.vue";
