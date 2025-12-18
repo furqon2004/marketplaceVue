@@ -4,17 +4,15 @@
     <div v-if="loading" class="text-center py-40 flex flex-col items-center">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mb-4"></div>
       <p class="text-gray-500">
-        {{ lang === 'id' ? 'Memuat...' : lang === 'jp' ? '読み込み中...' : 'Loading...' }}
+        {{ lang === 'id' ? 'Memuat...' : 'Loading...' }}
       </p>
     </div>
 
     <div v-else-if="!product" class="text-center py-20">
       <h2 class="text-2xl font-bold mb-2">404</h2>
-      <p>
-        {{ lang === 'id' ? 'Produk tidak ditemukan' : lang === 'jp' ? '商品が見つかりません' : 'Product not found' }}
-      </p>
+      <p>{{ lang === 'id' ? 'Produk tidak ditemukan' : 'Product not found' }}</p>
       <button @click="router.push('/')" class="mt-4 text-teal-600 hover:underline">
-        {{ lang === 'id' ? 'Kembali' : lang === 'jp' ? '戻る' : 'Back' }}
+        {{ lang === 'id' ? 'Kembali' : 'Back' }}
       </button>
     </div>
 
@@ -41,15 +39,15 @@
                 <span>{{ displayAverage }}</span>
              </div>
              <span class="text-gray-500">
-               ({{ reviews.length }} {{ lang === 'id' ? 'Ulasan' : lang === 'jp' ? 'レビュー' : 'Reviews' }})
+               ({{ reviews.length }} {{ lang === 'id' ? 'Ulasan' : 'Reviews' }})
              </span>
              <span class="text-gray-300">|</span>
              <p class="font-medium" :class="getStock(product.stock) === 0 ? 'text-red-600' : 'text-gray-500'">
                 <span v-if="getStock(product.stock) > 0">
-                  {{ lang === 'id' ? 'Stok' : lang === 'jp' ? '在庫' : 'Stock' }}: {{ getStock(product.stock) }}
+                  {{ lang === 'id' ? 'Stok' : 'Stock' }}: {{ getStock(product.stock) }}
                 </span>
                 <span v-else>
-                  {{ lang === 'id' ? 'Habis' : lang === 'jp' ? '在庫切れ' : 'Out of Stock' }}
+                  {{ lang === 'id' ? 'Habis' : 'Out of Stock' }}
                 </span>
              </p>
           </div>
@@ -71,16 +69,14 @@
           
           <div class="text-sm text-gray-500 dark:text-gray-400 mb-6 flex flex-wrap gap-3 items-center">
             <span class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-              {{ lang === 'id' ? 'Ukuran' : lang === 'jp' ? 'サイズ' : 'Size' }}: {{ product.size || '-' }}
+              {{ lang === 'id' ? 'Ukuran' : 'Size' }}: {{ product.size || '-' }}
             </span> 
             <span class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ translate(product.condition) }}</span> 
             <span class="flex items-center gap-1">Indonesia</span>
           </div>
 
           <div class="mb-6">
-            <h3 class="font-semibold mb-2">
-               {{ lang === 'id' ? 'Deskripsi' : lang === 'jp' ? '説明' : 'Description' }}
-            </h3>
+            <h3 class="font-semibold mb-2">{{ lang === 'id' ? 'Deskripsi' : 'Description' }}</h3>
             <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-line">
               {{ translate(product.description) }}
             </p>
@@ -105,7 +101,7 @@
               :disabled="getStock(product.stock) <= 0"
               class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded shadow transition disabled:opacity-50"
             >
-               {{ lang === 'id' ? 'Beli Sekarang' : lang === 'jp' ? '今すぐ購入' : 'Buy Now' }}
+               {{ lang === 'id' ? 'Beli Sekarang' : 'Buy Now' }}
             </button>
             
             <button 
@@ -113,7 +109,7 @@
               :disabled="getStock(product.stock) <= 0"
               class="w-full bg-white dark:bg-gray-800 border border-teal-600 text-teal-600 dark:text-teal-400 font-bold py-3 rounded hover:bg-teal-50 dark:hover:bg-gray-700 transition disabled:opacity-50"
             >
-               {{ lang === 'id' ? 'Tambah ke Keranjang' : lang === 'jp' ? 'カートに追加' : 'Add to Cart' }}
+               {{ lang === 'id' ? 'Tambah ke Keranjang' : 'Add to Cart' }}
             </button>
           </div>
 
@@ -130,7 +126,7 @@
       <div class="mt-16 pt-8 border-t dark:border-gray-700" id="reviews">
         <div class="flex justify-between items-center mb-6">
           <h3 class="text-xl font-bold">
-            {{ lang === 'id' ? 'Ulasan Pembeli' : lang === 'jp' ? 'カスタマーレビュー' : 'Customer Reviews' }}
+            {{ lang === 'id' ? 'Ulasan Pembeli' : 'Customer Reviews' }}
           </h3>
           
           <button 
@@ -138,7 +134,7 @@
             @click="isReviewModalOpen = true"
             class="px-5 py-2 bg-teal-600 text-white text-sm font-medium rounded hover:bg-teal-700 transition shadow"
           >
-            {{ lang === 'id' ? 'Tulis Ulasan' : lang === 'jp' ? 'レビューを書く' : 'Write Review' }}
+            {{ lang === 'id' ? 'Tulis Ulasan' : 'Write Review' }}
           </button>
         </div>
 
@@ -170,26 +166,26 @@
 
           <div v-if="reviews.length > 3" class="mt-6 text-center">
             <button @click="showAllReviews = !showAllReviews" class="text-teal-600 font-medium hover:underline text-sm">
-              {{ showAllReviews ? (lang === 'id' ? 'Tampilkan Lebih Sedikit' : lang === 'jp' ? '表示を減らす' : 'Show Less') : (lang === 'id' ? `Lihat Semua (${reviews.length})` : lang === 'jp' ? `すべて表示 (${reviews.length})` : `Show All (${reviews.length})`) }}
+              {{ showAllReviews ? (lang === 'id' ? 'Tampilkan Lebih Sedikit' : 'Show Less') : (lang === 'id' ? `Lihat Semua (${reviews.length})` : `Show All (${reviews.length})`) }}
             </button>
           </div>
         </div>
         
         <div v-else class="text-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed dark:border-gray-700">
            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-           {{ lang === 'id' ? 'Belum ada ulasan.' : lang === 'jp' ? 'レビューはまだありません。' : 'No reviews yet.' }}
+           {{ lang === 'id' ? 'Belum ada ulasan.' : 'No reviews yet.' }}
         </div>
       </div>
 
       <div class="mt-16">
         <h3 class="text-xl font-bold mb-6">
-           {{ lang === 'id' ? 'Produk Lainnya' : lang === 'jp' ? '他の商品' : 'Other Product' }}
+           {{ lang === 'id' ? 'Produk Lainnya' : 'Other Product' }}
         </h3>
         <div v-if="relatedProducts.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-6">
           <ProductCard v-for="p in relatedProducts" :key="p.id" :product="p" />
         </div>
         <div v-else class="text-gray-500 italic">
-           {{ lang === 'id' ? 'Tidak ada produk lain.' : lang === 'jp' ? '他の商品はありません。' : 'No other products.' }}
+           {{ lang === 'id' ? 'Tidak ada produk lain.' : 'No other products.' }}
         </div>
       </div>
     </div>
@@ -200,23 +196,23 @@
            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
         </div>
         <h3 class="text-lg font-bold mb-2">
-          {{ lang === 'id' ? 'Berhasil Masuk Keranjang!' : lang === 'jp' ? 'カートに追加されました！' : 'Added to Cart!' }}
+          {{ lang === 'id' ? 'Berhasil Masuk Keranjang!' : 'Added to Cart!' }}
         </h3>
         <div class="flex gap-2 mt-4">
           <button @click="showCartModal = false" class="flex-1 border border-teal-600 text-teal-600 py-2 rounded">
-             {{ lang === 'id' ? 'Lanjut' : lang === 'jp' ? '続ける' : 'Continue' }}
+             {{ lang === 'id' ? 'Lanjut' : 'Continue' }}
           </button>
           <button @click="router.push('/cart')" class="flex-1 bg-teal-600 text-white py-2 rounded">
-             {{ lang === 'id' ? 'Cek Keranjang' : lang === 'jp' ? 'カートを見る' : 'Check Cart' }}
+             {{ lang === 'id' ? 'Cek Keranjang' : 'Check Cart' }}
           </button>
         </div>
       </div>
     </div>
 
     <div v-if="isReviewModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4 backdrop-blur-sm">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md p-6 relative">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full max-w-md p-6">
         <h3 class="text-lg font-bold mb-4 text-center">
-          {{ lang === 'id' ? 'Beri Ulasan Produk' : lang === 'jp' ? 'レビューを書く' : 'Write Product Review' }}
+          {{ lang === 'id' ? 'Beri Ulasan Produk' : 'Write Product Review' }}
         </h3>
         
         <div class="flex justify-center mb-4 space-x-2">
@@ -229,12 +225,12 @@
         <p class="text-center text-sm text-gray-500 mb-6 font-medium">{{ reviewForm.rating }} / 5</p>
 
         <div class="mb-4">
-          <label class="block text-sm font-medium mb-1">{{ lang === 'id' ? 'Komentar' : lang === 'jp' ? 'コメント' : 'Comment' }}</label>
-          <textarea v-model="reviewForm.comment" rows="3" class="w-full border rounded p-2 text-sm bg-gray-50 dark:bg-gray-700 dark:border-gray-600 focus:ring-teal-500 focus:border-teal-500" :placeholder="lang === 'id' ? 'Bagaimana kualitas produk ini?' : lang === 'jp' ? 'この商品の品質はどうでしたか？' : 'How is the product quality?'"></textarea>
+          <label class="block text-sm font-medium mb-1">{{ lang === 'id' ? 'Komentar' : 'Comment' }}</label>
+          <textarea v-model="reviewForm.comment" rows="3" class="w-full border rounded p-2 text-sm bg-gray-50 dark:bg-gray-700 dark:border-gray-600 focus:ring-teal-500 focus:border-teal-500" :placeholder="lang === 'id' ? 'Bagaimana kualitas produk ini?' : 'How is the product quality?'"></textarea>
         </div>
 
         <div class="mb-6">
-          <label class="block text-sm font-medium mb-1">{{ lang === 'id' ? 'Foto (Opsional)' : lang === 'jp' ? '写真（任意）' : 'Photo (Optional)' }}</label>
+          <label class="block text-sm font-medium mb-1">{{ lang === 'id' ? 'Foto (Opsional)' : 'Photo (Optional)' }}</label>
           <div class="flex items-center gap-4">
             <div v-if="reviewForm.image" class="relative w-16 h-16">
                <img :src="reviewForm.image" class="w-full h-full object-cover rounded border">
@@ -242,7 +238,7 @@
             </div>
             <button @click="$refs.reviewFileInput.click()" class="px-3 py-2 border rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center gap-2">
                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-               {{ lang === 'id' ? 'Pilih Foto' : lang === 'jp' ? '写真を選択' : 'Upload Photo' }}
+               {{ lang === 'id' ? 'Pilih Foto' : 'Upload Photo' }}
             </button>
             <input ref="reviewFileInput" type="file" class="hidden" accept="image/*" @change="handleReviewFile">
           </div>
@@ -250,50 +246,12 @@
 
         <div class="flex justify-end gap-3">
           <button @click="isReviewModalOpen = false" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
-             {{ lang === 'id' ? 'Batal' : lang === 'jp' ? 'キャンセル' : 'Cancel' }}
+             {{ lang === 'id' ? 'Batal' : 'Cancel' }}
           </button>
           <button @click="submitReview" :disabled="reviewForm.rating === 0 || isSubmitting" class="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed">
-             {{ isSubmitting ? (lang === 'id' ? 'Mengirim...' : lang === 'jp' ? '送信中...' : 'Sending...') : (lang === 'id' ? 'Kirim' : lang === 'jp' ? '送信' : 'Submit') }}
+             {{ isSubmitting ? (lang === 'id' ? 'Mengirim...' : 'Sending...') : (lang === 'id' ? 'Kirim' : 'Submit') }}
           </button>
         </div>
-      </div>
-    </div>
-
-    <div v-if="showSuccessAlert" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm px-4 animate-fade-in">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center transform transition-all scale-100 border border-green-100 dark:border-green-900">
-        <div class="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4 shadow-sm">
-           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-           </svg>
-        </div>
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          {{ lang === 'id' ? 'Ulasan Terkirim!' : lang === 'jp' ? '送信完了！' : 'Review Submitted!' }}
-        </h3>
-        <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">
-          {{ lang === 'id' ? 'Terima kasih atas ulasan Anda.' : lang === 'jp' ? 'レビューありがとうございます。' : 'Thank you for your review.' }}
-        </p>
-        <button @click="showSuccessAlert = false" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition shadow-lg">
-          OK
-        </button>
-      </div>
-    </div>
-
-    <div v-if="showErrorAlert" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm px-4 animate-fade-in">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center transform transition-all scale-100 border border-red-100 dark:border-red-900">
-        <div class="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4 shadow-sm">
-           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-           </svg>
-        </div>
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
-          {{ lang === 'id' ? 'Gagal' : lang === 'jp' ? 'エラー' : 'Failed' }}
-        </h3>
-        <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">
-          {{ alertMessage }}
-        </p>
-        <button @click="showErrorAlert = false" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg transition shadow-lg">
-          {{ lang === 'id' ? 'Tutup' : lang === 'jp' ? '閉じる' : 'Close' }}
-        </button>
       </div>
     </div>
 
@@ -317,17 +275,12 @@ const lang = ref(localStorage.getItem("lang") || "id");
 const showCartModal = ref(false);
 
 const reviews = ref([]);
-const showAllReviews = ref(false);
+const showAllReviews = ref(false); // Toggle show all
 const canReview = ref(false);
 const isReviewModalOpen = ref(false);
 const isSubmitting = ref(false);
 const reviewForm = reactive({ rating: 0, comment: '', image: '' });
 const reviewFileInput = ref(null);
-
-// === NEW ALERT STATES ===
-const showSuccessAlert = ref(false);
-const showErrorAlert = ref(false);
-const alertMessage = ref('');
 
 const formatPrice = (value) => {
   if (!value && value !== 0) return 'Rp 0';
@@ -355,6 +308,7 @@ const getLabel = (key) => {
   return labels[key] ? labels[key][lang.value] : key;
 };
 
+// === FETCH DATA ===
 const fetchProduct = async () => {
   loading.value = true;
   const productId = route.params.id; 
@@ -379,6 +333,7 @@ const fetchProduct = async () => {
 };
 
 const fetchReviews = (productId) => {
+  // Ambil data reviews (50 terakhir agar ringan)
   const reviewsRef = query(dbRef(db, `reviews/${productId}`), limitToLast(50));
   onValue(reviewsRef, (snapshot) => {
     const data = snapshot.val();
@@ -392,9 +347,10 @@ const fetchReviews = (productId) => {
 
 const displayedReviews = computed(() => {
   if (showAllReviews.value) return reviews.value;
-  return reviews.value.slice(0, 3);
+  return reviews.value.slice(0, 3); // Hanya tampilkan 3 di awal
 });
 
+// Gunakan Rating dari Produk (Aggregated) kalau ada, kalau tidak hitung manual
 const displayAverage = computed(() => {
   if(product.value && product.value.ratingStats && product.value.ratingStats.average) {
     return product.value.ratingStats.average;
@@ -404,10 +360,12 @@ const displayAverage = computed(() => {
   return (total / reviews.value.length).toFixed(1);
 });
 
+// LOGIC ELIGIBILITY (BOLEH REVIEW ATAU TIDAK)
 const checkEligibility = async (productId) => {
   const user = auth.currentUser;
   if (!user) { canReview.value = false; return; }
 
+  // 1. Cek Apakah Pernah Review?
   const reviewsRef = dbRef(db, `reviews/${productId}`);
   const reviewSnapshot = await get(reviewsRef);
   if (reviewSnapshot.exists()) {
@@ -417,6 +375,7 @@ const checkEligibility = async (productId) => {
     }
   }
 
+  // 2. Cek Apakah Pernah Beli (Status Done/Paid)?
   const ordersRef = query(dbRef(db, 'orders'), orderByChild('userId'), equalTo(user.uid));
   const ordersSnapshot = await get(ordersRef);
   if (ordersSnapshot.exists()) {
@@ -434,31 +393,15 @@ const checkEligibility = async (productId) => {
 const handleReviewFile = (event) => {
   const file = event.target.files[0];
   if (file) {
-    // Validasi Ukuran File (Max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-       alertMessage.value = lang.value === 'id' ? 'Ukuran gambar maksimal 2MB' 
-                          : lang.value === 'jp' ? '画像サイズは最大2MBまでです' 
-                          : 'Max image size is 2MB';
-       showErrorAlert.value = true;
-       event.target.value = null; // Reset input
-       return;
-    }
-
     const reader = new FileReader();
     reader.onload = (e) => { reviewForm.image = e.target.result; };
     reader.readAsDataURL(file);
   }
 };
 
+// === SUBMIT REVIEW + TRANSACTION ===
 const submitReview = async () => {
-  if (reviewForm.rating === 0) {
-    alertMessage.value = lang.value === 'id' ? 'Mohon pilih bintang 1-5' 
-                       : lang.value === 'jp' ? '星1〜5を選択してください' 
-                       : 'Please select 1-5 stars';
-    showErrorAlert.value = true;
-    return;
-  }
-
+  if (reviewForm.rating === 0) return alert("Pilih bintang 1-5");
   isSubmitting.value = true;
   
   const user = auth.currentUser;
@@ -478,8 +421,10 @@ const submitReview = async () => {
       createdAt: Date.now()
     };
 
+    // 1. Simpan Review ke tabel reviews
     await push(dbRef(db, `reviews/${productId}`), newReview);
 
+    // 2. Update Aggregation di tabel products (PENTING AGAR RATING MUNCUL DI CARD)
     const productRatingRef = dbRef(db, `products/${productId}/ratingStats`);
     await runTransaction(productRatingRef, (currentStats) => {
       if (currentStats === null) {
@@ -491,12 +436,11 @@ const submitReview = async () => {
       return { count: newCount, totalStars: newTotal, average: newAvg };
     });
 
-    // TRIGGER SUCCESS MODAL
-    showSuccessAlert.value = true;
-    
+    alert(lang.value === 'id' ? 'Berhasil!' : 'Success!');
     isReviewModalOpen.value = false;
-    canReview.value = false;
+    canReview.value = false; // Disable tombol agar tidak spam
 
+    // Update lokal agar UI berubah realtime
     if(product.value) {
        if(!product.value.ratingStats) product.value.ratingStats = { count: 0, totalStars: 0, average: 0 };
        product.value.ratingStats.count++;
@@ -506,8 +450,7 @@ const submitReview = async () => {
     reviewForm.rating = 0; reviewForm.comment = ''; reviewForm.image = '';
 
   } catch (e) {
-    alertMessage.value = "Error: " + e.message;
-    showErrorAlert.value = true;
+    alert(e.message);
   } finally {
     isSubmitting.value = false;
   }
@@ -537,11 +480,7 @@ const toggleWishlist = () => { if (product.value) store.toggleWishlist(product.v
 
 const buyNow = () => {
   if (product.value) {
-    if (getStock(product.value.stock) <= 0) {
-        alertMessage.value = lang.value === 'id' ? 'Stok habis' : lang.value === 'jp' ? '在庫切れ' : 'Out of stock';
-        showErrorAlert.value = true;
-        return;
-    }
+    if (getStock(product.value.stock) <= 0) return alert(lang.value === 'id' ? 'Stok habis.' : 'Out of stock.');
     store.addToCart(product.value);
     router.push('/checkout');
   }
@@ -549,11 +488,7 @@ const buyNow = () => {
 
 const handleAddToCart = (redirect) => {
   if (product.value) {
-    if (getStock(product.value.stock) <= 0) {
-        alertMessage.value = lang.value === 'id' ? 'Stok habis' : lang.value === 'jp' ? '在庫切れ' : 'Out of stock';
-        showErrorAlert.value = true;
-        return;
-    }
+    if (getStock(product.value.stock) <= 0) return alert(lang.value === 'id' ? 'Stok habis.' : 'Out of stock.');
     store.addToCart(product.value);
     if (redirect) router.push('/cart'); 
     else showCartModal.value = true;

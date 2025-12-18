@@ -10,6 +10,14 @@ export const store = reactive({
 
   setUser(u) {
     this.user = u;
+    this.cart = [];
+    this.wishlist = [];
+    this.loadCart();
+    this.loadWishlist();
+  },
+
+  getStorageKey(prefix) {
+    return this.user ? `${prefix}_${this.user.uid}` : `${prefix}_guest`;
   },
 
   loadProducts() {
@@ -17,10 +25,9 @@ export const store = reactive({
     onValue(dbRef, (snap) => {
       const val = snap.val();
       if (val) {
-        // === PERBAIKAN DI SINI ===
         this.products = Object.keys(val).map((key) => ({
-          id: key, // Masukkan Key Firebase sebagai ID
-          ...val[key], // Masukkan sisa data produk (nama, harga, dll)
+          id: key,
+          ...val[key],
         }));
       } else {
         this.products = [];
@@ -28,10 +35,8 @@ export const store = reactive({
     });
   },
 
-  // === LOGIKA CART ===
   addToCart(product) {
     if (!this.cart) this.cart = [];
-
     const existing = this.cart.find((item) => item.id === product.id);
     if (existing) {
       existing.qty++;
@@ -58,35 +63,38 @@ export const store = reactive({
   },
 
   saveCart() {
-    localStorage.setItem("cart", JSON.stringify(this.cart));
+    const key = this.getStorageKey("cart");
+    localStorage.setItem(key, JSON.stringify(this.cart));
   },
 
   loadCart() {
-    const saved = localStorage.getItem("cart");
-    if (saved) this.cart = JSON.parse(saved);
-    else this.cart = [];
+    const key = this.getStorageKey("cart");
+    const saved = localStorage.getItem(key);
+    this.cart = saved ? JSON.parse(saved) : [];
   },
 
-  // === LOGIKA WISHLIST ===
   toggleWishlist(product) {
     if (!this.wishlist) this.wishlist = [];
-
     const index = this.wishlist.findIndex((item) => item.id === product.id);
     if (index === -1) {
       this.wishlist.push(product);
     } else {
       this.wishlist.splice(index, 1);
     }
-    localStorage.setItem("wishlist", JSON.stringify(this.wishlist));
+    this.saveWishlist();
+  },
+
+  saveWishlist() {
+    const key = this.getStorageKey("wishlist");
+    localStorage.setItem(key, JSON.stringify(this.wishlist));
   },
 
   loadWishlist() {
-    const saved = localStorage.getItem("wishlist");
-    if (saved) this.wishlist = JSON.parse(saved);
-    else this.wishlist = [];
+    const key = this.getStorageKey("wishlist");
+    const saved = localStorage.getItem(key);
+    this.wishlist = saved ? JSON.parse(saved) : [];
   },
 });
 
-// Load data saat aplikasi mulai
 store.loadCart();
 store.loadWishlist();
