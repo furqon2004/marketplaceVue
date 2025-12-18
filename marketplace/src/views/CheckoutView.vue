@@ -125,7 +125,24 @@
             <h2 class="text-lg font-medium text-gray-900 mb-4">
               {{ lang === 'id' ? 'Metode Pembayaran' : lang === 'jp' ? '支払い方法' : 'Payment Method' }}
             </h2>
-            <div class="space-y-4">
+            
+            <div v-if="payment.saved" class="flex items-start gap-4 p-4 border rounded-lg bg-gray-50">
+              <div class="bg-teal-100 p-2 rounded-full text-teal-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+              </div>
+              <div class="flex-1">
+                <p class="font-bold text-gray-900">
+                  {{ lang === 'id' ? 'Kartu Kredit' : lang === 'jp' ? 'クレジットカード' : 'Credit Card' }}
+                </p>
+                <p class="text-gray-600 text-sm mt-1">**** **** **** {{ payment.cardNumber.slice(-4) || 'XXXX' }}</p>
+                <p class="text-gray-600 text-sm">{{ payment.holderName }}</p>
+              </div>
+              <button @click="payment.saved = false" class="text-sm text-teal-600 font-medium hover:underline">
+                {{ lang === 'id' ? 'Ubah' : lang === 'jp' ? '変更' : 'Change' }}
+              </button>
+            </div>
+
+            <div v-else class="space-y-4">
               <div class="flex gap-3 mb-2">
                  <div class="border rounded p-2"><img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" class="h-6"></div>
                  <div class="border rounded p-2 bg-gray-50 opacity-50"><img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" class="h-6"></div>
@@ -157,6 +174,10 @@
                 </label>
                 <input v-model="payment.holderName" type="text" placeholder="Nama Pemilik Kartu" class="mt-1 w-full border border-gray-300 rounded-md p-2 text-sm">
               </div>
+
+              <button @click="savePayment" class="text-sm bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition">
+                {{ lang === 'id' ? 'Simpan Pembayaran' : lang === 'jp' ? '支払いを保存' : 'Save Payment' }}
+              </button>
             </div>
           </div>
 
@@ -245,7 +266,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { store } from '../store';
 import { auth, db } from '../firebase';
-import { ref as dbRef, get, update, set } from 'firebase/database';
+import { ref as dbRef, get, update, set, runTransaction } from 'firebase/database'; // Tambah runTransaction
 
 const router = useRouter();
 const lang = ref(localStorage.getItem("lang") || "id");
@@ -268,10 +289,10 @@ const payment = reactive({
   cardNumber: '',
   expiry: '',
   cvv: '',
-  holderName: ''
+  holderName: '',
+  saved: false // Default false
 });
 
-// Update Bahasa
 const updateLanguage = () => {
   lang.value = localStorage.getItem("lang") || "id";
 };
@@ -308,11 +329,21 @@ onMounted(async () => {
       const data = snapshot.val();
       userProfile.value = data;
       
+      // Load Address
       if (data.address) {
         address.detail = data.address.detail || '';
         address.city = data.address.city || '';
         address.zip = data.address.zip || '';
         address.saved = true;
+      }
+
+      // Load Payment Info (Jika Ada)
+      if (data.payment) {
+        payment.cardNumber = data.payment.cardNumber || '';
+        payment.expiry = data.payment.expiry || '';
+        payment.cvv = data.payment.cvv || '';
+        payment.holderName = data.payment.holderName || '';
+        payment.saved = true; // Auto switch ke tampilan ringkas
       }
     }
   } catch (error) {
@@ -339,18 +370,45 @@ const saveAddress = async () => {
       });
       address.saved = true;
     } catch (e) {
-      alert("Gagal menyimpan alamat");
+      alert(lang.value === 'id' ? 'Gagal menyimpan alamat' : lang.value === 'jp' ? '住所の保存に失敗しました' : 'Failed to save address');
+    }
+  }
+};
+
+// Fungsi Baru: Simpan Pembayaran
+const savePayment = async () => {
+  if(!payment.cardNumber || !payment.cvv) {
+    alert(lang.value === 'id' ? 'Lengkapi data kartu!' : lang.value === 'jp' ? 'カード情報を入力してください!' : 'Complete card details!');
+    return;
+  }
+  
+  const user = auth.currentUser;
+  if(user) {
+    try {
+      await update(dbRef(db, `users/${user.uid}`), {
+        payment: { 
+          cardNumber: payment.cardNumber,
+          expiry: payment.expiry,
+          cvv: payment.cvv,
+          holderName: payment.holderName
+        }
+      });
+      payment.saved = true;
+    } catch (e) {
+      alert(lang.value === 'id' ? 'Gagal menyimpan pembayaran' : lang.value === 'jp' ? '支払いの保存に失敗しました' : 'Failed to save payment');
     }
   }
 };
 
 const handleOrder = async () => {
   if (!address.saved) {
-    alert(lang.value === 'id' ? 'Mohon simpan alamat pengiriman.' : 'Please save shipping address.');
+    alert(lang.value === 'id' ? 'Mohon simpan alamat pengiriman.' : lang.value === 'jp' ? '配送先住所を保存してください。' : 'Please save shipping address.');
     return;
   }
-  if (!payment.cardNumber || !payment.cvv) {
-    alert(lang.value === 'id' ? 'Mohon lengkapi pembayaran.' : 'Please complete payment.');
+  
+  // Cek apakah pembayaran sudah diisi (baik tersimpan atau baru)
+  if ((!payment.saved) && (!payment.cardNumber || !payment.cvv)) {
+    alert(lang.value === 'id' ? 'Mohon lengkapi pembayaran.' : lang.value === 'jp' ? '支払いを完了してください。' : 'Please complete payment.');
     return;
   }
   
@@ -358,19 +416,6 @@ const handleOrder = async () => {
   const user = auth.currentUser;
 
   try {
-    // Validasi Stok
-    for (const item of store.cart) {
-      const snapshot = await get(dbRef(db, `products/${item.id}`));
-      if (snapshot.exists()) {
-        const currentStock = parseInt(snapshot.val().stock || 0);
-        if (currentStock < item.qty) {
-          throw new Error(`Stok "${item.name}" habis!`);
-        }
-      } else {
-        throw new Error(`Produk tidak ditemukan.`);
-      }
-    }
-
     const uniqueSuffix = Math.floor(Math.random() * 1000) + 1000; 
     const generatedId = `ORD-${Date.now().toString().slice(-6)}-${uniqueSuffix}`;
     orderId.value = generatedId;
@@ -396,14 +441,30 @@ const handleOrder = async () => {
       createdAt: Date.now()
     };
 
-    // Update Stok
+    // === [UPDATE PENTING] UPDATE STOK & TERJUAL (SOLD) ===
     for (const item of store.cart) {
       const productRef = dbRef(db, `products/${item.id}`);
-      const snapshot = await get(productRef);
-      if (snapshot.exists()) {
-        const currentStock = parseInt(snapshot.val().stock || 0);
-        await update(productRef, { stock: currentStock - item.qty });
-      }
+      
+      // Gunakan Transaction agar aman (Atomic Update)
+      await runTransaction(productRef, (currentData) => {
+        if (currentData) {
+          const currentStock = parseInt(currentData.stock || 0);
+          const currentSold = parseInt(currentData.sold || 0); // Ambil data sold lama
+
+          if (currentStock < item.qty) {
+            // Abort transaction jika stok habis
+            throw new Error(`Stok ${item.name} habis!`); 
+          }
+
+          // Return data baru: Stok berkurang, Sold bertambah
+          return {
+            ...currentData,
+            stock: currentStock - item.qty,
+            sold: currentSold + item.qty 
+          };
+        }
+        return currentData;
+      });
     }
 
     await set(dbRef(db, `orders/${generatedId}`), orderData);
