@@ -3,7 +3,15 @@
 
     <div class="relative w-full h-[300px] md:h-[520px] overflow-hidden pt-16 md:pt-20">
       <transition name="fade" mode="out-in">
-        <img :key="currentImageIndex" :src="bannerImages[currentImageIndex]" class="w-full h-full object-cover" alt="Promo" />
+        <img 
+          :key="currentImageIndex" 
+          :src="bannerImages[currentImageIndex]" 
+          class="w-full h-full object-cover" 
+          alt="Promo"
+          fetchpriority="high"
+          loading="eager"
+          decoding="async"
+        />
       </transition>
 
       <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
@@ -109,7 +117,6 @@ const bannerImages = [promo1, promo2, promo3];
 const loading = ref(true);
 const popularProducts = ref([]);
 const newProducts = ref([]);
-const brands = [ "Vans", "Bohoo", "Mango", "Reebok", "Converse", "Sandro", "Nike", "Adidas", "Dior", "Puma", "Zara" ];
 
 const nextImage = () => { currentImageIndex.value = (currentImageIndex.value + 1) % bannerImages.length; };
 const prevImage = () => { currentImageIndex.value = (currentImageIndex.value - 1 + bannerImages.length) % bannerImages.length; };
@@ -118,6 +125,12 @@ const resetAutoPlay = () => { clearInterval(autoPlayInterval.value); startAutoPl
 const updateLanguage = () => { lang.value = localStorage.getItem("lang") || "id"; };
 
 onMounted(() => {
+  // --- OPTIMASI: Preload Gambar Banner ---
+  bannerImages.forEach((image) => {
+    const img = new Image();
+    img.src = image;
+  });
+
   startAutoPlay();
   window.addEventListener("storage", updateLanguage);
   const productsBaseRef = dbRef(db, 'products');
