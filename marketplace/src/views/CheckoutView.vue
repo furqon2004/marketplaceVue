@@ -102,7 +102,7 @@
                   </p>
                 </div>
               </div>
-              <span class="font-bold text-gray-900">Free</span>
+              <span class="font-bold text-gray-900">{{ formatRupiah(baseShippingCost) }}</span>
             </label>
 
             <label class="flex items-center justify-between p-4 border rounded-lg cursor-pointer mt-3 transition" :class="isExpress ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-gray-300'">
@@ -117,7 +117,7 @@
                   </p>
                 </div>
               </div>
-              <span class="font-bold text-teal-600">+ Rp 15.000</span>
+              <span class="font-bold text-teal-600">{{ formatRupiah(baseShippingCost + 50000) }}</span>
             </label>
           </div>
 
@@ -270,21 +270,19 @@ const showSuccessModal = ref(false);
 const orderId = ref('');
 const isExpress = ref(false); 
 const userProfile = ref({});
-const checkoutItems = ref([]); // State baru untuk menampung barang checkout
+const checkoutItems = ref([]); 
 
 const address = reactive({ detail: '', city: '', zip: '', saved: false });
 const payment = reactive({ cardNumber: '', expiry: '', cvv: '', holderName: '', saved: false });
 
 const translate = (data) => typeof data === 'object' ? data[lang.value] || data['en'] : data || "";
 
-// === LOGIC OPTIMASI BELI LANGSUNG ===
 onMounted(async () => {
   window.addEventListener("storage", () => lang.value = localStorage.getItem("lang") || "id");
 
   const user = auth.currentUser;
   if (!user) { router.push('/login'); return; }
 
-  // 1. Cek parameter URL untuk Beli Langsung
   const isDirect = route.query.direct === 'true';
   const pid = route.query.pid;
 
@@ -301,11 +299,9 @@ onMounted(async () => {
       }
     } catch (e) { console.error(e); }
   } else {
-    // Jika checkout biasa, ambil dari store.cart
     checkoutItems.value = store.cart;
   }
 
-  // 2. Load User Profile & Data Tersimpan
   try {
     const snapshot = await get(dbRef(db, `users/${user.uid}`));
     if (snapshot.exists()) {
@@ -324,12 +320,19 @@ const subTotal = computed(() => {
   }, 0);
 });
 
+// LOGIKA ONGKIR BARU
+const baseShippingCost = computed(() => {
+  return checkoutItems.value.reduce((acc, item) => {
+    const ongkir = typeof item.shipping === 'string' ? parseInt(item.shipping.replace(/[^0-9]/g, '')) : item.shipping;
+    return acc + (ongkir || 0);
+  }, 0);
+});
+
 const protectionFee = ref(20000);
-const shippingCost = computed(() => isExpress.value ? 15000 : 0);
+const shippingCost = computed(() => isExpress.value ? baseShippingCost.value + 50000 : baseShippingCost.value);
 const grandTotal = computed(() => subTotal.value + protectionFee.value + shippingCost.value);
 const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
 
-// === ACTIONS ===
 const saveAddress = async () => {
   if(!address.detail) return alert('Alamat wajib diisi!');
   const u = auth.currentUser;
@@ -369,7 +372,6 @@ const handleOrder = async () => {
       createdAt: Date.now()
     };
 
-    // UPDATE STOK & TERJUAL
     for (const item of checkoutItems.value) {
       const pRef = dbRef(db, `products/${item.id}`);
       await runTransaction(pRef, (current) => {
@@ -385,7 +387,6 @@ const handleOrder = async () => {
 
     await set(dbRef(db, `orders/${generatedId}`), orderData);
 
-    // Kosongkan keranjang HANYA jika bukan beli langsung
     if (route.query.direct !== 'true') {
       store.cart = [];
       store.saveCart();
