@@ -5,7 +5,7 @@
         {{ lang === 'id' ? 'Pembayaran' : lang === 'jp' ? 'チェックアウト' : 'Checkout' }}
       </h1>
 
-      <div v-if="store.cart.length === 0" class="text-center py-20 bg-white rounded-lg shadow">
+      <div v-if="checkoutItems.length === 0" class="text-center py-20 bg-white rounded-lg shadow">
         <p class="text-gray-500 mb-4">
           {{ lang === 'id' ? 'Keranjang belanja Anda kosong.' : lang === 'jp' ? 'カートは空です。' : 'Your cart is empty.' }}
         </p>
@@ -23,11 +23,11 @@
               {{ lang === 'id' ? 'Barang Pesanan' : lang === 'jp' ? '注文商品' : 'Order Items' }}
             </h2>
             <div class="space-y-4">
-              <div v-for="item in store.cart" :key="item.id" class="flex justify-between items-center border-b pb-4 last:border-0 last:pb-0">
+              <div v-for="item in checkoutItems" :key="item.id" class="flex justify-between items-center border-b pb-4 last:border-0 last:pb-0">
                 <div class="flex gap-4">
                   <img :src="item.image || 'https://via.placeholder.com/150'" class="w-16 h-16 object-cover rounded bg-gray-100 border">
                   <div>
-                    <p class="font-medium text-gray-900">{{ item.name }}</p>
+                    <p class="font-medium text-gray-900">{{ translate(item.name) }}</p>
                     <p class="text-sm text-gray-500">
                       {{ item.size || (lang === 'id' ? 'Semua Ukuran' : 'All Size') }}
                     </p>
@@ -229,23 +229,16 @@
     </div>
 
     <div v-if="showSuccessModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm transition-opacity">
-      <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full text-center transform transition-all scale-100">
-        
+      <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full text-center">
         <div class="mx-auto w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mb-6">
            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-
         <h2 class="text-xl font-bold text-gray-900 mb-2">Order #{{ orderId }}</h2>
         <h3 class="text-lg font-medium text-teal-600 mb-4">
           {{ lang === 'id' ? 'berhasil dibuat' : lang === 'jp' ? '注文完了' : 'placed successfully' }}
         </h3>
-        
-        <p class="text-sm text-gray-500 mb-8 leading-relaxed">
-          {{ lang === 'id' ? 'Terima kasih telah berbelanja. Pesanan Anda berhasil dibuat dan stok produk telah kami amankan.' : lang === 'jp' ? 'お買い上げありがとうございます。注文が正常に作成され、在庫が確保されました。' : 'Thank you for shopping. Your order has been placed successfully and stock has been secured.' }}
-        </p>
-
         <div class="space-y-3">
           <button @click="finishOrder('/')" class="w-full border border-teal-600 text-teal-600 font-bold py-2 rounded hover:bg-teal-50 transition">
             {{ lang === 'id' ? 'Lanjut Belanja' : lang === 'jp' ? '買い物を続ける' : 'Continue Shopping' }}
@@ -254,7 +247,6 @@
             {{ lang === 'id' ? 'Lihat Riwayat' : lang === 'jp' ? '履歴を見る' : 'Go to History' }}
           </button>
         </div>
-
       </div>
     </div>
 
@@ -263,12 +255,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { store } from '../store';
 import { auth, db } from '../firebase';
-import { ref as dbRef, get, update, set, runTransaction } from 'firebase/database'; // Tambah runTransaction
+import { ref as dbRef, get, update, set, runTransaction, child } from 'firebase/database';
 
 const router = useRouter();
+const route = useRoute();
 const lang = ref(localStorage.getItem("lang") || "id");
 
 // === STATE ===
@@ -277,212 +270,130 @@ const showSuccessModal = ref(false);
 const orderId = ref('');
 const isExpress = ref(false); 
 const userProfile = ref({});
+const checkoutItems = ref([]); // State baru untuk menampung barang checkout
 
-const address = reactive({
-  detail: '',
-  city: '',
-  zip: '',
-  saved: false
+const address = reactive({ detail: '', city: '', zip: '', saved: false });
+const payment = reactive({ cardNumber: '', expiry: '', cvv: '', holderName: '', saved: false });
+
+const translate = (data) => typeof data === 'object' ? data[lang.value] || data['en'] : data || "";
+
+// === LOGIC OPTIMASI BELI LANGSUNG ===
+onMounted(async () => {
+  window.addEventListener("storage", () => lang.value = localStorage.getItem("lang") || "id");
+
+  const user = auth.currentUser;
+  if (!user) { router.push('/login'); return; }
+
+  // 1. Cek parameter URL untuk Beli Langsung
+  const isDirect = route.query.direct === 'true';
+  const pid = route.query.pid;
+
+  if (isDirect && pid) {
+    try {
+      const snapshot = await get(child(dbRef(db), `products/${pid}`));
+      if (snapshot.exists()) {
+        const d = snapshot.val();
+        checkoutItems.value = [{
+          id: pid,
+          ...d,
+          qty: parseInt(route.query.qty) || 1
+        }];
+      }
+    } catch (e) { console.error(e); }
+  } else {
+    // Jika checkout biasa, ambil dari store.cart
+    checkoutItems.value = store.cart;
+  }
+
+  // 2. Load User Profile & Data Tersimpan
+  try {
+    const snapshot = await get(dbRef(db, `users/${user.uid}`));
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      userProfile.value = data;
+      if (data.address) { Object.assign(address, { ...data.address, saved: true }); }
+      if (data.payment) { Object.assign(payment, { ...data.payment, saved: true }); }
+    }
+  } catch (e) { console.error(e); }
 });
 
-const payment = reactive({
-  cardNumber: '',
-  expiry: '',
-  cvv: '',
-  holderName: '',
-  saved: false // Default false
-});
-
-const updateLanguage = () => {
-  lang.value = localStorage.getItem("lang") || "id";
-};
-
-// === COMPUTED ===
 const subTotal = computed(() => {
-  return store.cart.reduce((acc, item) => {
+  return checkoutItems.value.reduce((acc, item) => {
     const price = typeof item.price === 'string' ? parseInt(item.price.replace(/[^0-9]/g, '')) : item.price;
-    return acc + (price * item.qty);
+    return acc + (price * (item.qty || 1));
   }, 0);
 });
 
 const protectionFee = ref(20000);
 const shippingCost = computed(() => isExpress.value ? 15000 : 0);
 const grandTotal = computed(() => subTotal.value + protectionFee.value + shippingCost.value);
-
-const formatRupiah = (num) => {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
-};
-
-// === LIFECYCLE ===
-onMounted(async () => {
-  window.addEventListener("storage", updateLanguage);
-
-  const user = auth.currentUser;
-  if (!user) {
-    router.push('/login');
-    return;
-  }
-
-  try {
-    const snapshot = await get(dbRef(db, `users/${user.uid}`));
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      userProfile.value = data;
-      
-      // Load Address
-      if (data.address) {
-        address.detail = data.address.detail || '';
-        address.city = data.address.city || '';
-        address.zip = data.address.zip || '';
-        address.saved = true;
-      }
-
-      // Load Payment Info (Jika Ada)
-      if (data.payment) {
-        payment.cardNumber = data.payment.cardNumber || '';
-        payment.expiry = data.payment.expiry || '';
-        payment.cvv = data.payment.cvv || '';
-        payment.holderName = data.payment.holderName || '';
-        payment.saved = true; // Auto switch ke tampilan ringkas
-      }
-    }
-  } catch (error) {
-    console.error("Gagal load user:", error);
-  }
-});
-
-onUnmounted(() => {
-  window.removeEventListener("storage", updateLanguage);
-});
+const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
 
 // === ACTIONS ===
 const saveAddress = async () => {
-  if(!address.detail || !address.city) {
-    alert(lang.value === 'id' ? 'Alamat wajib diisi!' : lang.value === 'jp' ? '住所は必須です！' : 'Address is required!');
-    return;
-  }
-  
-  const user = auth.currentUser;
-  if(user) {
-    try {
-      await update(dbRef(db, `users/${user.uid}`), {
-        address: { ...address }
-      });
-      address.saved = true;
-    } catch (e) {
-      alert(lang.value === 'id' ? 'Gagal menyimpan alamat' : lang.value === 'jp' ? '住所の保存に失敗しました' : 'Failed to save address');
-    }
+  if(!address.detail) return alert('Alamat wajib diisi!');
+  const u = auth.currentUser;
+  if(u) {
+    await update(dbRef(db, `users/${u.uid}`), { address: { ...address } });
+    address.saved = true;
   }
 };
 
-// Fungsi Baru: Simpan Pembayaran
 const savePayment = async () => {
-  if(!payment.cardNumber || !payment.cvv) {
-    alert(lang.value === 'id' ? 'Lengkapi data kartu!' : lang.value === 'jp' ? 'カード情報を入力してください!' : 'Complete card details!');
-    return;
-  }
-  
-  const user = auth.currentUser;
-  if(user) {
-    try {
-      await update(dbRef(db, `users/${user.uid}`), {
-        payment: { 
-          cardNumber: payment.cardNumber,
-          expiry: payment.expiry,
-          cvv: payment.cvv,
-          holderName: payment.holderName
-        }
-      });
-      payment.saved = true;
-    } catch (e) {
-      alert(lang.value === 'id' ? 'Gagal menyimpan pembayaran' : lang.value === 'jp' ? '支払いの保存に失敗しました' : 'Failed to save payment');
-    }
+  if(!payment.cardNumber) return alert('Lengkapi data kartu!');
+  const u = auth.currentUser;
+  if(u) {
+    await update(dbRef(db, `users/${u.uid}`), { payment: { ...payment } });
+    payment.saved = true;
   }
 };
 
 const handleOrder = async () => {
-  if (!address.saved) {
-    alert(lang.value === 'id' ? 'Mohon simpan alamat pengiriman.' : lang.value === 'jp' ? '配送先住所を保存してください。' : 'Please save shipping address.');
-    return;
-  }
-  
-  // Cek apakah pembayaran sudah diisi (baik tersimpan atau baru)
-  if ((!payment.saved) && (!payment.cardNumber || !payment.cvv)) {
-    alert(lang.value === 'id' ? 'Mohon lengkapi pembayaran.' : lang.value === 'jp' ? '支払いを完了してください。' : 'Please complete payment.');
-    return;
-  }
+  if (!address.saved || !payment.saved) return alert('Lengkapi alamat dan pembayaran!');
   
   isProcessing.value = true;
   const user = auth.currentUser;
 
   try {
-    const uniqueSuffix = Math.floor(Math.random() * 1000) + 1000; 
-    const generatedId = `ORD-${Date.now().toString().slice(-6)}-${uniqueSuffix}`;
+    const generatedId = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
     orderId.value = generatedId;
 
     const orderData = {
       orderId: generatedId,
       userId: user.uid,
-      items: store.cart,
-      shipping: {
-        method: isExpress.value ? 'Express' : 'Regular',
-        cost: shippingCost.value,
-        address: { ...address }
-      },
-      payment: {
-        method: 'Credit Card',
-        card: payment.cardNumber.slice(-4)
-      },
-      total: {
-        subTotal: subTotal.value,
-        grandTotal: grandTotal.value
-      },
+      items: checkoutItems.value,
+      shipping: { method: isExpress.value ? 'Express' : 'Regular', cost: shippingCost.value, address: { ...address } },
+      payment: { method: 'Credit Card', card: payment.cardNumber.slice(-4) },
+      total: { subTotal: subTotal.value, grandTotal: grandTotal.value },
       status: 'Paid',
       createdAt: Date.now()
     };
 
-    // === [UPDATE PENTING] UPDATE STOK & TERJUAL (SOLD) ===
-    for (const item of store.cart) {
-      const productRef = dbRef(db, `products/${item.id}`);
-      
-      // Gunakan Transaction agar aman (Atomic Update)
-      await runTransaction(productRef, (currentData) => {
-        if (currentData) {
-          const currentStock = parseInt(currentData.stock || 0);
-          const currentSold = parseInt(currentData.sold || 0); // Ambil data sold lama
-
-          if (currentStock < item.qty) {
-            // Abort transaction jika stok habis
-            throw new Error(`Stok ${item.name} habis!`); 
-          }
-
-          // Return data baru: Stok berkurang, Sold bertambah
-          return {
-            ...currentData,
-            stock: currentStock - item.qty,
-            sold: currentSold + item.qty 
-          };
+    // UPDATE STOK & TERJUAL
+    for (const item of checkoutItems.value) {
+      const pRef = dbRef(db, `products/${item.id}`);
+      await runTransaction(pRef, (current) => {
+        if (current) {
+          const s = parseInt(current.stock || 0);
+          const t = parseInt(current.sold || 0);
+          if (s < item.qty) throw new Error(`Stok habis!`);
+          return { ...current, stock: s - item.qty, sold: t + item.qty };
         }
-        return currentData;
+        return current;
       });
     }
 
     await set(dbRef(db, `orders/${generatedId}`), orderData);
 
-    store.cart = [];
-    store.saveCart();
+    // Kosongkan keranjang HANYA jika bukan beli langsung
+    if (route.query.direct !== 'true') {
+      store.cart = [];
+      store.saveCart();
+    }
 
     showSuccessModal.value = true;
-
-  } catch (error) {
-    alert("Error: " + error.message);
-  } finally {
-    isProcessing.value = false;
-  }
+  } catch (e) { alert(e.message); } finally { isProcessing.value = false; }
 };
 
-const finishOrder = (path) => {
-  showSuccessModal.value = false;
-  router.push(path);
-};
+const finishOrder = (p) => { showSuccessModal.value = false; router.push(p); };
 </script>

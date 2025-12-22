@@ -7,36 +7,36 @@ export const store = reactive({
   products: [],
   cart: [],
   wishlist: [],
+  showLoginAlert: false,
 
   setUser(u) {
     this.user = u;
-    this.cart = [];
-    this.wishlist = [];
-    this.loadCart();
-    this.loadWishlist();
+    if (u) {
+      this.loadCart();
+      this.loadWishlist();
+    } else {
+      this.cart = [];
+      this.wishlist = [];
+    }
   },
 
   getStorageKey(prefix) {
-    return this.user ? `${prefix}_${this.user.uid}` : `${prefix}_guest`;
+    return this.user ? `${prefix}_${this.user.uid}` : null;
   },
 
   loadProducts() {
     const dbRef = ref(db, "products/");
     onValue(dbRef, (snap) => {
       const val = snap.val();
-      if (val) {
-        this.products = Object.keys(val).map((key) => ({
-          id: key,
-          ...val[key],
-        }));
-      } else {
-        this.products = [];
-      }
+      this.products = val ? Object.keys(val).map((key) => ({ id: key, ...val[key] })) : [];
     });
   },
 
   addToCart(product) {
-    if (!this.cart) this.cart = [];
+    if (!this.user) {
+      this.showLoginAlert = true;
+      return;
+    }
     const existing = this.cart.find((item) => item.id === product.id);
     if (existing) {
       existing.qty++;
@@ -47,34 +47,37 @@ export const store = reactive({
   },
 
   removeFromCart(id) {
-    if (!this.cart) return;
+    if (!this.user) return;
     this.cart = this.cart.filter((item) => item.id !== id);
     this.saveCart();
   },
 
   updateQty(id, amount) {
-    if (!this.cart) return;
+    if (!this.user) return;
     const item = this.cart.find((item) => item.id === id);
     if (item) {
       item.qty += amount;
       if (item.qty <= 0) this.removeFromCart(id);
+      else this.saveCart();
     }
-    this.saveCart();
   },
 
   saveCart() {
     const key = this.getStorageKey("cart");
-    localStorage.setItem(key, JSON.stringify(this.cart));
+    if (key) localStorage.setItem(key, JSON.stringify(this.cart));
   },
 
   loadCart() {
     const key = this.getStorageKey("cart");
-    const saved = localStorage.getItem(key);
+    const saved = key ? localStorage.getItem(key) : null;
     this.cart = saved ? JSON.parse(saved) : [];
   },
 
   toggleWishlist(product) {
-    if (!this.wishlist) this.wishlist = [];
+    if (!this.user) {
+      this.showLoginAlert = true;
+      return;
+    }
     const index = this.wishlist.findIndex((item) => item.id === product.id);
     if (index === -1) {
       this.wishlist.push(product);
@@ -86,15 +89,14 @@ export const store = reactive({
 
   saveWishlist() {
     const key = this.getStorageKey("wishlist");
-    localStorage.setItem(key, JSON.stringify(this.wishlist));
+    if (key) localStorage.setItem(key, JSON.stringify(this.wishlist));
   },
 
   loadWishlist() {
     const key = this.getStorageKey("wishlist");
-    const saved = localStorage.getItem(key);
+    const saved = key ? localStorage.getItem(key) : null;
     this.wishlist = saved ? JSON.parse(saved) : [];
   },
 });
 
-store.loadCart();
-store.loadWishlist();
+store.loadProducts();

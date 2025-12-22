@@ -134,30 +134,20 @@ const form = reactive({
   photoURL: ''
 });
 
-// Update Bahasa
 const updateLanguage = () => {
   lang.value = localStorage.getItem("lang") || "id";
 };
 
 onMounted(async () => {
   window.addEventListener("storage", updateLanguage);
-
   const user = auth.currentUser;
   if (user) {
+    const snapshot = await get(dbRef(db, 'users/' + user.uid));
+    const data = snapshot.val() || {};
     form.email = user.email || '';
-    form.displayName = user.displayName || '';
-    
-    try {
-      const snapshot = await get(dbRef(db, 'users/' + user.uid));
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        form.username = data.username || '';
-        form.displayName = data.fullname || user.displayName || '';
-        form.photoURL = data.photoURL || ''; 
-      }
-    } catch (error) {
-      console.error("Gagal ambil data user:", error);
-    }
+    form.username = data.username || '';
+    form.displayName = data.fullname || user.displayName || '';
+    form.photoURL = data.photoURL || ''; 
   }
 });
 
@@ -169,42 +159,47 @@ const processImage = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = (event) => {
+    reader.onload = (e) => {
       const img = new Image();
-      img.src = event.target.result;
+      img.src = e.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 500;
-        const scaleSize = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH;
-        canvas.height = img.height * scaleSize;
+        const MAX_SIZE = 400; 
+        let width = img.width;
+        let height = img.height;
 
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6)); 
       };
-      img.onerror = (error) => reject(error);
     };
-    reader.onerror = (error) => reject(error);
   });
 };
 
 const handleFileChange = async (event) => {
   const file = event.target.files[0];
-  if (file) {
-    if (file.size > 5 * 1024 * 1024) {
-      alert(lang.value === 'id' ? 'File terlalu besar' : 'File too large');
-      return;
-    }
-    
-    try {
-      const base64String = await processImage(file);
-      photoBase64.value = base64String;
-      photoPreview.value = base64String;
-    } catch (e) {
-      alert("Gagal memproses gambar");
-    }
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) return alert("Max 2MB");
+  
+  try {
+    const base64 = await processImage(file);
+    photoBase64.value = base64;
+    photoPreview.value = base64;
+  } catch (e) {
+    console.error(e);
   }
 };
 
@@ -215,34 +210,29 @@ const removePhoto = () => {
 };
 
 const updateProfileHandler = async () => {
+  if (isLoading.value) return;
   isLoading.value = true;
   try {
     const user = auth.currentUser;
-    if (!user) throw new Error("User belum login");
-
-    await updateProfile(user, {
-      displayName: form.displayName
-    });
+    if (!user) return;
 
     const updates = {
       fullname: form.displayName,
       username: form.username,
     };
 
-    if (photoBase64.value !== null) {
-      updates.photoURL = photoBase64.value;
-    } else if (form.photoURL === '') {
-      updates.photoURL = '';
-    }
+    if (photoBase64.value !== null) updates.photoURL = photoBase64.value;
+    else if (form.photoURL === '') updates.photoURL = '';
 
-    await update(dbRef(db, 'users/' + user.uid), updates);
+    await Promise.all([
+      updateProfile(user, { displayName: form.displayName }),
+      update(dbRef(db, 'users/' + user.uid), updates)
+    ]);
 
-    alert(lang.value === 'id' ? 'Profil berhasil disimpan!' : 'Profile saved successfully!');
+    alert(lang.value === 'id' ? 'Berhasil!' : 'Success!');
     window.location.reload();
-    
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Gagal: " + error.message);
+  } catch (e) {
+    alert(e.message);
   } finally {
     isLoading.value = false;
   }

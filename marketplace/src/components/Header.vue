@@ -115,8 +115,7 @@ const router = useRouter();
 const route = useRoute();
 
 const user = ref(null);
-const defaultAvatar = "https://i.pravatar.cc/100";
-const currentPhoto = ref(defaultAvatar);
+const currentPhoto = ref("");
 const currentLanguage = ref(localStorage.getItem("lang") || "id");
 const langMenuOpen = ref(false);
 const isDark = ref(false);
@@ -124,20 +123,30 @@ const searchQuery = ref(route.query.q || "");
 const profileMenuOpen = ref(false);
 const showLogoutModal = ref(false);
 
+const getStaticAvatar = (name) => {
+  const seed = name ? encodeURIComponent(name) : "user";
+  return `https://ui-avatars.com/api/?name=${seed}&background=0d9488&color=fff`;
+};
+
 onMounted(() => {
   const savedDarkMode = localStorage.getItem("darkMode") === "true";
   isDark.value = savedDarkMode;
   document.documentElement.classList.toggle("dark", savedDarkMode);
+  
   onAuthStateChanged(auth, (u) => {
     user.value = u;
     if (u) {
       const userRef = dbRef(db, "users/" + u.uid);
       onValue(userRef, (snapshot) => {
         const data = snapshot.val();
-        currentPhoto.value = data?.photoURL || defaultAvatar;
+        if (data?.photoURL) {
+          currentPhoto.value = data.photoURL;
+        } else {
+          currentPhoto.value = getStaticAvatar(data?.fullname || u.displayName || u.email);
+        }
       });
     } else {
-      currentPhoto.value = defaultAvatar;
+      currentPhoto.value = getStaticAvatar("Guest");
     }
   });
   window.addEventListener("click", closeMenus);

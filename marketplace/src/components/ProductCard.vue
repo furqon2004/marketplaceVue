@@ -36,8 +36,7 @@
     </div>
 
     <div class="flex flex-col flex-grow">
-      
-      <p class="font-bold text-teal-600 text-lg mb-1">{{ formatRupiah(product.price) }}</p>
+      <p class="font-bold text-teal-600 text-lg mb-1">{{ formattedPrice }}</p>
       
       <div class="flex items-center gap-2 mb-2 text-xs text-gray-500">
          <div class="flex items-center text-yellow-400 font-bold bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-100">
@@ -45,11 +44,11 @@
             <span class="text-gray-700 dark:text-gray-300">{{ productRating }}</span>
          </div>
          <span class="text-gray-300">|</span>
-         <span class="text-xs font-medium">{{ soldCount }} {{ lang === 'id' ? 'Terjual' : 'Sold' }}</span>
+         <span class="text-xs font-medium">{{ soldCountDisplay }} {{ lang === 'id' ? 'Terjual' : 'Sold' }}</span>
       </div>
 
       <p class="text-gray-700 dark:text-gray-300 text-sm font-medium line-clamp-2 leading-snug mb-2 hover:text-teal-600 transition">
-        {{ translate(product.name) }}
+        {{ productName }}
       </p>
 
       <div class="flex items-center justify-between mt-auto mb-2 text-xs">
@@ -73,23 +72,28 @@
         {{ product.location || 'Indonesia' }}
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed } from 'vue';
 import { store } from '../store';
 
 const props = defineProps({
-  product: Object
+  product: { type: Object, required: true }
 });
 
 const router = useRouter();
 const lang = ref(localStorage.getItem("lang") || "id");
 
-// === Helper Stock ===
+// Cache formatters for better performance
+const currencyFormatter = new Intl.NumberFormat('id-ID', { 
+  style: 'currency', 
+  currency: 'IDR', 
+  minimumFractionDigits: 0 
+});
+
 const isOutOfStock = computed(() => {
   const stock = parseInt(props.product.stock);
   return !isNaN(stock) && stock <= 0;
@@ -98,54 +102,29 @@ const isOutOfStock = computed(() => {
 const stockLabel = computed(() => {
   const stock = parseInt(props.product.stock);
   if (isNaN(stock)) return 'Ready Stock'; 
-  if (stock <= 0) return 'Stok Habis';
-  return `Stok: ${stock}`;
+  return stock <= 0 ? (lang.value === 'id' ? 'Stok Habis' : 'Out of Stock') : `Stok: ${stock}`;
 });
 
-// === [LOGIC BARU] Helper Rating & Sold ===
-const productRating = computed(() => {
-  // 1. Cek apakah ada data ratingStats dari fitur review yang baru kita buat
-  if (props.product.ratingStats && props.product.ratingStats.average) {
-    return props.product.ratingStats.average;
-  }
-  // 2. Fallback: Jika tidak ada, kembalikan 0.0 (Bukan error, tapi emang belum ada yang rating)
-  return '0.0';
-});
+const productRating = computed(() => props.product.ratingStats?.average || '0.0');
 
-const soldCount = computed(() => {
-  // 1. Jika di database ada field 'sold' (manual input), pakai itu
+const soldCountDisplay = computed(() => {
   if (props.product.sold) return props.product.sold;
-  
-  // 2. Jika tidak ada, kita ESTMASI dari jumlah review (Biar nggak 0 banget)
-  // Rumus: Jumlah Review * 3 + angka acak
-  if (props.product.ratingStats && props.product.ratingStats.count) {
-    return props.product.ratingStats.count * 3 + 2; 
-  }
-  
-  // 3. Default 0
-  return 0;
+  return props.product.ratingStats?.count ? (props.product.ratingStats.count * 3 + 2) : 0;
 });
 
-const translate = (data) => {
-  if (!data) return "";
-  if (typeof data === 'object') {
-    return data[lang.value] || data['en'];
-  }
-  return data;
-};
+const productName = computed(() => {
+  const name = props.product.name;
+  return typeof name === 'object' ? (name[lang.value] || name['en']) : name || "";
+});
 
-const formatRupiah = (price) => {
+const formattedPrice = computed(() => {
+  const price = props.product.price;
   const num = typeof price === 'string' ? parseInt(price.replace(/[^0-9]/g, '')) || 0 : price;
-  return new Intl.NumberFormat('id-ID', { 
-    style: 'currency', 
-    currency: 'IDR', 
-    minimumFractionDigits: 0 
-  }).format(num || 0);
-};
+  return currencyFormatter.format(num || 0);
+});
 
 const isInWishlist = computed(() => {
-  if (!store.wishlist) return false;
-  return store.wishlist.some(item => item.id === props.product.id);
+  return store.wishlist?.some(item => item.id === props.product.id) ?? false;
 });
 
 const goToDetail = () => {
@@ -155,18 +134,6 @@ const goToDetail = () => {
 const toggleWishlist = () => {
   if (isOutOfStock.value) return; 
   store.toggleWishlist(props.product);
-  if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+  if (navigator.vibrate) navigator.vibrate(50);
 };
-
-const updateLanguage = () => {
-  lang.value = localStorage.getItem("lang") || "id";
-};
-
-onMounted(() => {
-  window.addEventListener("storage", updateLanguage);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("storage", updateLanguage);
-});
 </script>

@@ -18,7 +18,7 @@
       </button>
     </div>
 
-    <h1 class="text-2xl font-bold mb-6">{{ getTitle }}</h1>
+    <h1 class="text-2xl font-bold mb-6">{{ searchQuery ? (lang === 'id' ? 'Hasil Pencarian' : 'Search Results') : (selectedBrand || 'Semua Produk') }}</h1>
 
     <div v-if="isLoading" class="text-center py-20 flex flex-col items-center justify-center">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mb-4"></div>
@@ -26,21 +26,36 @@
     </div>
 
     <div v-else-if="filteredProducts.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
-      <p class="text-gray-500 text-lg">{{ lang === 'id' ? 'Produk tidak ditemukan.' : lang === 'jp' ? '商品が見つかりません。' : 'Product not found.' }}</p>
+      <p class="text-gray-500 text-lg">{{ lang === 'id' ? 'Produk tidak ditemukan.' : 'Product not found.' }}</p>
       <div class="flex gap-4 mt-4">
-        <button v-if="searchQuery" @click="resetSearch" class="text-teal-600 font-medium hover:underline">{{ lang === 'id' ? 'Reset Pencarian' : lang === 'jp' ? '検索をリセット' : 'Reset Search' }}</button>
-        <button @click="resetAll" class="text-gray-500 font-medium hover:underline">{{ lang === 'id' ? 'Lihat Semua' : lang === 'jp' ? 'すべて見る' : 'See All' }}</button>
+        <button v-if="searchQuery" @click="resetSearch" class="text-teal-600 font-medium hover:underline">Reset Search</button>
+        <button @click="resetAll" class="text-gray-500 font-medium hover:underline">See All</button>
       </div>
     </div>
 
     <div v-else>
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         <ProductCard v-for="p in paginatedProducts" :key="p.id" :product="p" />
       </div>
+
       <div v-if="totalPages > 1" class="flex justify-center items-center mt-12 gap-4">
-        <button @click="prevPage" :disabled="currentPage === 1" class="px-4 py-2 bg-white dark:bg-gray-800 border rounded-lg disabled:opacity-50">Previous</button>
-        <span class="text-gray-600 dark:text-gray-400">Page {{ currentPage }} of {{ totalPages }}</span>
-        <button @click="nextPage" :disabled="currentPage === totalPages" class="px-4 py-2 bg-white dark:bg-gray-800 border rounded-lg disabled:opacity-50">Next</button>
+        <button 
+          @click="prevPage" 
+          :disabled="currentPage === 1" 
+          class="px-4 py-2 bg-white dark:bg-gray-800 border rounded-lg disabled:opacity-50 transition hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          Previous
+        </button>
+        <span class="text-gray-600 dark:text-gray-400 font-medium">
+          Page {{ currentPage }} of {{ totalPages }}
+        </span>
+        <button 
+          @click="nextPage" 
+          :disabled="currentPage === totalPages" 
+          class="px-4 py-2 bg-white dark:bg-gray-800 border rounded-lg disabled:opacity-50 transition hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          Next
+        </button>
       </div>
     </div>
   </div>
@@ -59,7 +74,7 @@ const isLoading = ref(true);
 const selectedBrand = ref(route.query.brand || null);
 const searchQuery = ref(route.query.q || "");
 const currentPage = ref(1);
-const itemsPerPage = 12;
+const itemsPerPage = 10; // 10 item (2 baris x 5 kolom) agar optimal
 const brands = ["Vans", "Bohoo", "Mango", "Reebok", "Converse", "Sandro", "Nike", "Adidas", "Dior", "Puma", "Zara"];
 
 const handleSearchEvent = (e) => {
@@ -72,18 +87,13 @@ const filteredProducts = computed(() => {
   const s = searchQuery.value.toLowerCase().trim();
   const b = selectedBrand.value?.toLowerCase();
 
-  if (!s && !b) return allProducts;
-
   return allProducts.filter(p => {
-    // Normalisasi data untuk menghindari error undefined pada data besar
-    const name = (p.name || p.title || "").toLowerCase();
-    const desc = (p.description || "").toLowerCase();
-    const cat = (p.category || "").toLowerCase();
+    const name = (p.name || "").toLowerCase();
     const brand = (p.brand || "").toLowerCase();
-
-    const matchesSearch = !s || name.includes(s) || desc.includes(s) || cat.includes(s) || brand.includes(s);
-    const matchesBrand = !b || cat === b || brand === b;
-
+    const cat = (p.category || "").toLowerCase();
+    
+    const matchesSearch = !s || name.includes(s) || brand.includes(s) || cat.includes(s);
+    const matchesBrand = !b || brand === b || cat === b;
     return matchesSearch && matchesBrand;
   });
 });
@@ -95,6 +105,21 @@ const paginatedProducts = computed(() => {
 
 const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage));
 
+// Logika Navigasi Pagination
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
 const updateFilter = (brand) => {
   selectedBrand.value = brand;
   currentPage.value = 1;
@@ -103,27 +128,34 @@ const updateFilter = (brand) => {
 
 const resetSearch = () => {
   searchQuery.value = "";
+  currentPage.value = 1;
   router.replace({ query: { ...route.query, q: undefined } });
+};
+
+const resetAll = () => {
+  selectedBrand.value = null;
+  searchQuery.value = "";
+  currentPage.value = 1;
+  router.replace({ path: '/items', query: {} });
 };
 
 onMounted(() => {
   store.loadProducts();
   window.addEventListener("search", handleSearchEvent);
-  
-  const check = setInterval(() => {
-    if (store.products.length > 0) {
-      isLoading.value = false;
-      clearInterval(check);
-    }
-  }, 200);
-  setTimeout(() => { isLoading.value = false; clearInterval(check); }, 3000);
+  setTimeout(() => { isLoading.value = false; }, 800);
 });
 
 onUnmounted(() => {
   window.removeEventListener("search", handleSearchEvent);
 });
 
-watch(() => route.query.q, (newQ) => {
-  searchQuery.value = newQ || "";
+watch(() => route.query.brand, (newB) => { 
+  selectedBrand.value = newB || null; 
+  currentPage.value = 1;
+});
+
+watch(() => route.query.q, (newQ) => { 
+  searchQuery.value = newQ || ""; 
+  currentPage.value = 1;
 });
 </script>
